@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📍 Advanced Marker Dashboard</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            background: #0f172a;
+            color: #00ffcc;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h2 {
+            margin: 10px;
+        }
+        .input-box {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        input {
+            padding: 10px;
+            background: #1e293b;
+            color: #00ffcc;
+            border: none;
+            border-radius: 5px;
+            width: 150px;
+        }
+        button {
+            padding: 10px;
+            background: #00ffcc;
+            color: #0f172a;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #map {
+            height: 400px;
+            width: 80%;
+            border: 2px solid #00ffcc;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #334155;
+            text-align: center;
+        }
+        th {
+            background-color: #1e293b;
+        }
+        tr:hover {
+            background-color: #334155;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>📍 Add Marker & Manage Locations</h2>
+
+    <div class="input-box">
+        <input type="text" id="lat" placeholder="Latitude (e.g., 26.91)">
+        <input type="text" id="lon" placeholder="Longitude (e.g., 75.78)">
+        <button onclick="addMarker()">📌 Mark</button>
+        <button onclick="clearAllMarkers()">🚫 Clear All</button>
+    </div>
+
+    <div id="map"></div>
+
+    <h3>🗃️ Marked Coordinates</h3>
+    <table id="markerTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>🗑️ Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be inserted here -->
+        </tbody>
+    </table>
+
+    <script>
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        let markers = [];
+
+        function addMarker() {
+            const lat = parseFloat(document.getElementById("lat").value);
+            const lon = parseFloat(document.getElementById("lon").value);
+
+            if (isNaN(lat) || isNaN(lon)) {
+                alert("❌ Invalid coordinates!");
+                return;
+            }
+
+            const marker = L.marker([lat, lon]).addTo(map)
+                .bindPopup(`📍 Lat: ${lat}<br>📍 Lon: ${lon}`)
+                .openPopup();
+
+            markers.push({ lat, lon, marker });
+            updateTable();
+            map.setView([lat, lon], 10);
+        }
+
+        function deleteMarker(index) {
+            map.removeLayer(markers[index].marker);
+            markers.splice(index, 1);
+            updateTable();
+        }
+
+        function clearAllMarkers() {
+            markers.forEach(m => map.removeLayer(m.marker));
+            markers = [];
+            updateTable();
+        }
+
+        function updateTable() {
+            const table = document.getElementById("markerTable").getElementsByTagName('tbody')[0];
+            table.innerHTML = "";
+
+            markers.forEach((m, index) => {
+                const row = table.insertRow();
+                row.insertCell(0).innerText = index + 1;
+                row.insertCell(1).innerText = m.lat.toFixed(4);
+                row.insertCell(2).innerText = m.lon.toFixed(4);
+
+                const delBtn = document.createElement("button");
+                delBtn.innerText = "❌";
+                delBtn.style.background = "#ff4444";
+                delBtn.style.color = "white";
+                delBtn.style.border = "none";
+                delBtn.style.padding = "6px";
+                delBtn.style.borderRadius = "5px";
+                delBtn.style.cursor = "pointer";
+                delBtn.onclick = () => deleteMarker(index);
+
+                const cell = row.insertCell(3);
+                cell.appendChild(delBtn);
+            });
+        }
+    </script>
+
+</body>
+</html>
