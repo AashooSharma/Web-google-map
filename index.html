@@ -1,77 +1,96 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>📍 Load Markers from CSV</title>
+    <title>📍 Sci-Fi Auto IP Map</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Leaflet -->
+
+    <!-- Leaflet + PapaParse -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <!-- PapaParse to read CSV -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
 
     <style>
         body {
-            background: #0f172a;
-            color: #00ffcc;
-            font-family: 'Courier New', monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background: #0a0f1c;
+            color: #00ffee;
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
             padding: 20px;
         }
         #map {
             height: 500px;
-            width: 80%;
-            border: 2px solid #00ffcc;
+            width: 90%;
+            margin: 20px auto;
+            border: 2px solid #00ffee;
             border-radius: 10px;
-            margin-top: 20px;
-        }
-        input[type="file"] {
-            margin: 20px;
-            padding: 10px;
-            background: #1e293b;
-            color: #00ffcc;
-            border: 1px solid #00ffcc;
-            border-radius: 5px;
+            box-shadow: 0 0 20px #00ffee;
         }
     </style>
 </head>
 <body>
 
-    <h2>📁 Load CSV Logs to Map</h2>
-    <input type="file" id="csvFile" accept=".csv" />
-
+    <h2>📁 Auto-loaded IP Logs Map (Sci-Fi)</h2>
     <div id="map"></div>
 
     <script>
         const map = L.map('map').setView([20.5937, 78.9629], 5);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        document.getElementById("csvFile").addEventListener("change", function (e) {
-            const file = e.target.files[0];
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    const data = results.data;
-                    data.forEach(row => {
-                        const lat = parseFloat(row.lat);
-                        const lon = parseFloat(row.lon);
-                        const username = row.username || "Unknown";
-                        const time = row.time || "";
+        // Dark Matter Tile
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://carto.com/">CARTO</a> | OpenStreetMap contributors'
+        }).addTo(map);
 
-                        if (!isNaN(lat) && !isNaN(lon)) {
-                            L.marker([lat, lon])
-                             .addTo(map)
-                             .bindPopup(`<b>${username}</b><br>${time}<br>Lat: ${lat}, Lon: ${lon}`);
-                        }
-                    });
-                }
+        const userColors = {};
+        const colorPalette = [
+            "#00ffee", "#ff44ee", "#33ff77", "#ffcc00",
+            "#ff0066", "#00ffff", "#ffaa44", "#cc66ff"
+        ];
+
+        function getUserColor(username) {
+            if (!userColors[username]) {
+                userColors[username] = colorPalette[Object.keys(userColors).length % colorPalette.length];
+            }
+            return userColors[username];
+        }
+
+        // Load logs.csv on page load
+        fetch("logs.csv")
+            .then(response => response.text())
+            .then(csvText => {
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const data = results.data;
+
+                        data.forEach(row => {
+                            const lat = parseFloat(row.lat);
+                            const lon = parseFloat(row.lon);
+                            const user = row.username || "Unknown";
+                            const ip = row.ip || "";
+                            const time = row.time || "";
+
+                            if (!isNaN(lat) && !isNaN(lon)) {
+                                const color = getUserColor(user);
+
+                                const marker = L.circleMarker([lat, lon], {
+                                    radius: 8,
+                                    color: color,
+                                    fillColor: color,
+                                    fillOpacity: 0.6
+                                }).addTo(map);
+
+                                marker.bindPopup(`<b>👤 ${user}</b><br>🌐 ${ip}<br>🕒 ${time}`);
+                            }
+                        });
+                    }
+                });
+            })
+            .catch(error => {
+                alert("⚠️ Failed to load logs.csv\n" + error);
             });
-        });
     </script>
 
 </body>
