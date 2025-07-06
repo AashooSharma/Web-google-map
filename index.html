@@ -1,102 +1,192 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>📍 Sci-Fi IP Logs Auto Map</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📍 User Filtered Sci-Fi Map</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Leaflet & PapaParse -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+  <!-- Leaflet & PapaParse -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet" />
 
-    <style>
-        body {
-            background: #0a0f1c;
-            color: #00ffee;
-            font-family: 'Orbitron', sans-serif;
-            text-align: center;
-            padding: 20px;
-        }
-        #map {
-            height: 500px;
-            width: 90%;
-            margin: 20px auto;
-            border: 2px solid #00ffee;
-            border-radius: 10px;
-            box-shadow: 0 0 20px #00ffee;
-        }
-    </style>
+  <style>
+    body {
+      background: #0a0f1c;
+      color: #00ffee;
+      font-family: "Orbitron", sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    #map {
+      height: 500px;
+      width: 90%;
+      margin: 20px auto;
+      border: 2px solid #00ffee;
+      border-radius: 10px;
+      box-shadow: 0 0 20px #00ffee;
+    }
+
+    .user-list {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1e293b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: #00ffee;
+      box-shadow: 0 0 8px #00ffee50;
+    }
+
+    .color-dot {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    button {
+      margin: 15px;
+      padding: 8px 16px;
+      background: #00ffee;
+      color: #0a0f1c;
+      border: none;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
+  <h2>📁 Sci-Fi Map with User Selection</h2>
+  <div id="map"></div>
 
-    <h2>📁 Sci-Fi Map: All User Logs Auto Loaded</h2>
-    <div id="map"></div>
+  <button onclick="toggleAll(true)">Select All</button>
+  <button onclick="toggleAll(false)">Deselect All</button>
 
-    <script>
-        const map = L.map('map').setView([20.5937, 78.9629], 5);
+  <div class="user-list" id="userList"></div>
 
-        // Dark Matter theme
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; CARTO | OpenStreetMap'
-        }).addTo(map);
+  <script>
+    const map = L.map("map").setView([20.5937, 78.9629], 5);
 
-        const userColors = {};
-        const colorPalette = [
-            "#00ffee", "#ff44ee", "#33ff77", "#ffcc00", "#ff0066", "#00ffff", "#ffaa44", "#cc66ff", "#88ff88", "#ff8888"
-        ];
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; CARTO | OpenStreetMap",
+    }).addTo(map);
 
-        const bounds = [];
+    const colorPalette = [
+      "#00ffee", "#ff44ee", "#33ff77", "#ffcc00", "#ff0066",
+      "#00ffff", "#ffaa44", "#cc66ff", "#88ff88", "#ff8888"
+    ];
 
-        function getUserColor(username) {
-            if (!userColors[username]) {
-                userColors[username] = colorPalette[Object.keys(userColors).length % colorPalette.length];
-            }
-            return userColors[username];
+    const userColors = {};
+    const userMarkers = {};
+    const markerLayer = L.layerGroup().addTo(map);
+
+    let allLogs = [];
+
+    function getUserColor(username) {
+      if (!userColors[username]) {
+        userColors[username] = colorPalette[Object.keys(userColors).length % colorPalette.length];
+      }
+      return userColors[username];
+    }
+
+    function renderUserList() {
+      const container = document.getElementById("userList");
+      container.innerHTML = "";
+
+      Object.keys(userColors).forEach(user => {
+        const div = document.createElement("div");
+        div.className = "user-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true;
+        checkbox.dataset.user = user;
+        checkbox.addEventListener("change", () => {
+          updateMap();
+        });
+
+        const dot = document.createElement("span");
+        dot.className = "color-dot";
+        dot.style.backgroundColor = userColors[user];
+
+        const label = document.createElement("span");
+        label.innerText = user;
+
+        div.appendChild(checkbox);
+        div.appendChild(dot);
+        div.appendChild(label);
+
+        container.appendChild(div);
+      });
+    }
+
+    function toggleAll(state) {
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = state;
+      });
+      updateMap();
+    }
+
+    function updateMap() {
+      markerLayer.clearLayers();
+      const selectedUsers = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => cb.dataset.user);
+
+      const bounds = [];
+
+      allLogs.forEach(entry => {
+        if (selectedUsers.includes(entry.username)) {
+          const marker = L.circleMarker([entry.lat, entry.lon], {
+            radius: 8,
+            color: entry.color,
+            fillColor: entry.color,
+            fillOpacity: 0.6
+          }).bindPopup(`<b>👤 ${entry.username}</b><br>🌐 ${entry.ip}<br>🕒 ${entry.time}`);
+
+          marker.addTo(markerLayer);
+          bounds.push([entry.lat, entry.lon]);
         }
+      });
 
-        fetch("logs.csv")
-            .then(response => response.text())
-            .then(csvText => {
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        const data = results.data;
+      if (bounds.length) {
+        map.fitBounds(bounds);
+      }
+    }
 
-                        data.forEach(row => {
-                            const lat = parseFloat(row.lat);
-                            const lon = parseFloat(row.lon);
-                            const user = row.username || "Unknown";
-                            const ip = row.ip || "Unknown";
-                            const time = row.time || "N/A";
+    // Load CSV and render everything
+    fetch("logs.csv")
+      .then(res => res.text())
+      .then(csv => {
+        Papa.parse(csv, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allLogs = results.data.map(row => ({
+              username: row.username,
+              ip: row.ip,
+              time: row.time,
+              lat: parseFloat(row.lat),
+              lon: parseFloat(row.lon),
+              color: getUserColor(row.username)
+            })).filter(entry => !isNaN(entry.lat) && !isNaN(entry.lon));
 
-                            if (!isNaN(lat) && !isNaN(lon)) {
-                                const color = getUserColor(user);
-
-                                const marker = L.circleMarker([lat, lon], {
-                                    radius: 8,
-                                    color: color,
-                                    fillColor: color,
-                                    fillOpacity: 0.6
-                                }).addTo(map);
-
-                                marker.bindPopup(`<b>👤 ${user}</b><br>🌐 ${ip}<br>🕒 ${time}`);
-                                bounds.push([lat, lon]);
-                            }
-                        });
-
-                        if (bounds.length) {
-                            map.fitBounds(bounds);  // Auto zoom to all points
-                        }
-                    }
-                });
-            })
-            .catch(error => {
-                alert("⚠️ Failed to load logs.csv\n" + error);
-            });
-    </script>
-
+            renderUserList();
+            updateMap();
+          }
+        });
+      });
+  </script>
 </body>
 </html>
